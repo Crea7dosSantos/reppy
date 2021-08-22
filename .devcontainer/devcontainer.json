@@ -1,0 +1,19 @@
+{
+    "name": "Rust Dev Container",
+    "context": "..",
+    "dockerFile": "Dockerfile",
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "lldb.executable": "/usr/bin/lldb",
+        "files.watcherExclude": {
+            "**/target/**": true
+        }
+    },
+    "extensions": [
+        "rust-lang.rust",
+        "bungcip.better-toml",
+        "vadimcn.vscode-lldb",
+        "mutantdino.resourcemonitor",
+        "ms-azuretools.vscode-docker"
+    ],
+}
