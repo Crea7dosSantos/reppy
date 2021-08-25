@@ -57,3 +57,40 @@ pub struct BufferPoolManager {
     pool: BufferPool,
     page_table: HashMap<PageId, BufferId>,
 }
+
+impl BufferPoolManager {
+    pub fn new(disk: DiskManager, pool: BufferPool) -> Self {
+        let page_table = HashMap::new();
+        Self {
+            disk,
+            pool,
+            page_table,
+        }
+    }
+
+    pub fn fetch_page(&mut self, page_id: PageId) -> Result<Rc<Buffer>, Error> {
+        if let Some(&buffer_id) = self.page_table.get(&page_id) {
+            let frame = &mut self.pool[buffer_id];
+            frame.usage_count += 1;
+            return Ok(Rc::clone(&frame.buffer));
+        }
+        let buffer_id = self.pool.evict().ok_or(Error::NoFreeBuffer)?;
+        let frame = &mut self.pool[buffer_id];
+        let evict_page_id = frame.buffer.page_id;
+        {
+            let buffer = Rc::get_mut(&mut frame.buffer).unwrap();
+            if buffer.is_dirty.get() {
+                self.disk
+                    .write_page_data(evict_page_id, buffer.page.get_mut())?;
+            }
+            buffer.page_id = page_id;
+            buffer.is_dirty.set(false);
+            self.disk.read_page_data(page_id, buffer.page.get_mut())?;
+            frame.usage_count = 1;
+        }
+        let page = Rc::clone(&frame.buffer);
+        self.page_table.remove(&evict_page_id);
+        self.page_table.insert(page_id, buffer_id);
+        Ok(page)
+    }
+}
